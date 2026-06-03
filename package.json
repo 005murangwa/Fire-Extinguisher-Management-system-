@@ -1,0 +1,43 @@
+{
+  "name": "fems-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "TZW LTD Fire Extinguisher Management System - RESTful microservices platform",
+  "type": "module",
+  "license": "MIT",
+  "workspaces": [
+    "packages/*",
+    "services/*",
+    "gateway",
+    "database",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently --kill-others --names \"USER,AUTH,EXT,INSP,REPORT,NOTIFY,REQ,GW,UI\" --prefix-colors \"red,blue,yellow,magenta,cyan,white,orange,gray,green\" \"npm run dev:user\" \"npm run dev:auth\" \"npm run dev:ext\" \"npm run dev:insp\" \"npm run dev:report\" \"npm run dev:notify\" \"npm run dev:request\" \"npm run dev:gw\" \"npm run dev:ui\"",
+    "dev:user": "cd services/user-service && npm run dev",
+    "dev:auth": "cd services/auth-service && npm run dev",
+    "dev:ext": "cd services/extinguisher-service && npm run dev",
+    "dev:insp": "cd services/inspection-service && npm run dev",
+    "dev:report": "cd services/reporting-service && npm run dev",
+    "dev:notify": "cd services/notification-service && npm run dev",
+    "dev:request": "cd services/request-service && npm run dev",
+    "dev:gw": "cd gateway && npm run dev",
+    "dev:ui": "cd frontend && npm run dev",
+    "install:all": "npm install && cd services/user-service && npm install && cd ../auth-service && npm install && cd ../extinguisher-service && npm install && cd ../inspection-service && npm install && cd ../reporting-service && npm install && cd ../notification-service && npm install && cd ../../gateway && npm install && cd ../frontend && npm install",
+    "kill": "taskkill /F /IM node.exe",
+    "status": "node scripts/health-check.js",
+    "db:migrate": "node database/scripts/migrate.js",
+    "db:seed": "node database/scripts/seed.js",
+    "test": "node --test tests/unit/*.test.js tests/integration/*.test.js",
+    "test:unit": "node --test tests/unit/*.test.js",
+    "test:report": "node tests/run-report.js"
+  },
+  "devDependencies": {
+    "@rollup/rollup-win32-x64-msvc": "^4.61.0",
+    "concurrently": "^8.2.2",
+    "nodemon": "^3.0.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

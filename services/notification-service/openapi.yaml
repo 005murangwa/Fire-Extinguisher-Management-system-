@@ -1,0 +1,59 @@
+openapi: 3.0.3
+info:
+  title: TZW FEMS - Notification Service API
+  version: 1.0.0
+  description: >
+    Generates and serves notifications for upcoming/overdue inspections,
+    expiring extinguishers and maintenance reminders, with read tracking.
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Via API Gateway
+  - url: http://localhost:4005
+    description: Direct (development)
+tags:
+  - name: Notifications
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+security:
+  - bearerAuth: []
+paths:
+  /notifications:
+    get:
+      tags: [Notifications]
+      summary: List notifications for the current user
+      parameters:
+        - { name: page, in: query, schema: { type: integer } }
+        - { name: limit, in: query, schema: { type: integer } }
+        - { name: type, in: query, schema: { type: string, enum: [INSPECTION_SCHEDULED, INSPECTION_UPCOMING, INSPECTION_OVERDUE, EXTINGUISHER_EXPIRING, MAINTENANCE_REMINDER] } }
+        - { name: isRead, in: query, schema: { type: string, enum: ["true", "false"] } }
+      responses:
+        '200': { description: Paginated notifications }
+  /notifications/unread-count:
+    get:
+      tags: [Notifications]
+      summary: Unread notification count (badge)
+      responses:
+        '200': { description: "{ count }" }
+  /notifications/{id}/read:
+    patch:
+      tags: [Notifications]
+      summary: Mark a notification as read
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Updated }
+        '404': { description: Not found }
+  /notifications/mark-all-read:
+    post:
+      tags: [Notifications]
+      summary: Mark all notifications as read
+      responses:
+        '200': { description: "{ updated }" }
+  /notifications/generate:
+    post:
+      tags: [Notifications]
+      summary: Generate notifications from domain data (ADMIN)
+      responses:
+        '200': { description: "{ created }" }
+        '403': { description: Forbidden }

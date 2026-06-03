@@ -1,0 +1,144 @@
+openapi: 3.0.3
+info:
+  title: TZW FEMS - Inspection & Maintenance Service API
+  version: 1.0.0
+  description: >
+    Schedule inspections (no past dates, no duplicate slots), complete them,
+    log maintenance activities and view a combined per-asset timeline.
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Via API Gateway
+  - url: http://localhost:4004
+    description: Direct (development)
+tags:
+  - name: Inspections
+  - name: Maintenance
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  schemas:
+    Error:
+      type: object
+      properties:
+        success: { type: boolean }
+        error: { type: object, properties: { code: { type: string }, message: { type: string } } }
+    Inspection:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        extinguisherId: { type: string, format: uuid }
+        inspectorId: { type: string, format: uuid, nullable: true }
+        inspectionDate: { type: string, format: date }
+        inspectionTime: { type: string, example: "09:00:00" }
+        status: { type: string, enum: [Scheduled, Completed, Overdue, Cancelled] }
+        result: { type: string, enum: [Pass, Fail, Needs Maintenance], nullable: true }
+        notes: { type: string, nullable: true }
+security:
+  - bearerAuth: []
+paths:
+  /inspections:
+    get:
+      tags: [Inspections]
+      summary: List inspections (filter by status/extinguisher/inspector)
+      parameters:
+        - { name: page, in: query, schema: { type: integer } }
+        - { name: limit, in: query, schema: { type: integer } }
+        - { name: status, in: query, schema: { type: string, enum: [Scheduled, Completed, Overdue, Cancelled] } }
+        - { name: extinguisherId, in: query, schema: { type: string, format: uuid } }
+        - { name: inspectorId, in: query, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Paginated inspections }
+    post:
+      tags: [Inspections]
+      summary: Schedule an inspection
+      description: Validates the extinguisher exists, the date is not in the past and the slot is free.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [extinguisherId, inspectionDate, inspectionTime]
+              properties:
+                extinguisherId: { type: string, format: uuid }
+                inspectorId: { type: string, format: uuid }
+                inspectionDate: { type: string, format: date }
+                inspectionTime: { type: string, example: "09:00" }
+                notes: { type: string }
+      responses:
+        '201': { description: Scheduled }
+        '404': { description: Extinguisher not found }
+        '409': { description: Duplicate slot }
+        '422': { description: Past date / validation error }
+  /inspections/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Inspections]
+      summary: Get an inspection
+      responses:
+        '200': { description: Inspection }
+        '404': { description: Not found }
+    patch:
+      tags: [Inspections]
+      summary: Update / complete an inspection (ADMIN/INSPECTOR)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string, enum: [Scheduled, Completed, Overdue, Cancelled] }
+                result: { type: string, enum: [Pass, Fail, Needs Maintenance] }
+                notes: { type: string }
+      responses:
+        '200': { description: Updated }
+        '404': { description: Not found }
+  /inspections/{id}/cancel:
+    post:
+      tags: [Inspections]
+      summary: Cancel an inspection
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Cancelled }
+        '400': { description: Cannot cancel (completed/not found) }
+  /maintenance:
+    get:
+      tags: [Maintenance]
+      summary: List maintenance logs
+      parameters:
+        - { name: extinguisherId, in: query, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Paginated maintenance logs }
+    post:
+      tags: [Maintenance]
+      summary: Log a maintenance activity (ADMIN/INSPECTOR)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [extinguisherId, actionTaken, maintenanceDate]
+              properties:
+                extinguisherId: { type: string, format: uuid }
+                inspectionId: { type: string, format: uuid }
+                actionTaken: { type: string }
+                maintenanceDate: { type: string, format: date }
+                issuesIdentified: { type: string }
+                notes: { type: string }
+                recommendations: { type: string }
+      responses:
+        '201': { description: Logged }
+        '404': { description: Extinguisher not found }
+  /timelines/{extinguisherId}:
+    get:
+      tags: [Maintenance]
+      summary: Combined inspection + maintenance timeline for an asset
+      parameters:
+        - { name: extinguisherId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Timeline events }
+        '404': { description: Not found }

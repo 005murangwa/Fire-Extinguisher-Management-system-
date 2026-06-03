@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Environment
+.env
+.env.local
+.env.*.local
+*.pem
+
+# Build output
+dist/
+build/
+frontend/dist/
+coverage/
+.vite/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Database backups (generated)
+database/backups/*.sql
+database/backups/*.dump
+!database/backups/.gitkeep
+
+# Reports (generated)
+docs/test-results/coverage/
+reports/*.pdf
+reports/*.csv
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json

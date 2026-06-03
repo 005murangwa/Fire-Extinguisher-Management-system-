@@ -1,0 +1,14 @@
+{
+  "name": "@fems/database",
+  "version": "1.0.0",
+  "description": "Database migration, seed and backup tooling for TZW FEMS.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "migrate": "node scripts/migrate.js",
+    "seed": "node scripts/seed.js"
+  },
+  "dependencies": {
+    "@fems/shared": "1.0.0"
+  }
+}

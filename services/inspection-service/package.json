@@ -1,0 +1,16 @@
+{
+  "name": "@fems/inspection-service",
+  "version": "1.0.0",
+  "description": "Inspection & Maintenance Service - scheduling, maintenance logging and timelines.",
+  "type": "module",
+  "private": true,
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon --watch src --watch ../../packages/shared/src src/server.js"
+  },
+  "dependencies": {
+    "@fems/shared": "1.0.0",
+    "zod": "^3.23.8"
+  }
+}

@@ -1,0 +1,111 @@
+# ============================================================================
+# TZW FEMS - Docker Compose
+# ----------------------------------------------------------------------------
+# Orchestrates PostgreSQL, the six microservices, the API gateway and the
+# frontend. Intended for local development and the project demonstration.
+#
+# Usage:
+#   docker compose up -d            # start everything
+#   docker compose logs -f gateway  # tail a service
+#   docker compose down             # stop
+# ============================================================================
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: fems-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-fems}
+      POSTGRES_USER: ${POSTGRES_USER:-fems_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_in_production}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - fems_pgdata:/var/lib/postgresql/data
+      # Schema + reference data are applied automatically on first boot.
+      - ./database/sql:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fems_app} -d ${POSTGRES_DB:-fems}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Shared build context for all Node services (single image, different command).
+  auth-service:
+    build: { context: ., dockerfile: Dockerfile, args: { SERVICE: services/auth-service } }
+    environment: &svc_env
+      NODE_ENV: ${NODE_ENV:-development}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-fems_app}:${POSTGRES_PASSWORD:-change_me_in_production}@postgres:5432/${POSTGRES_DB:-fems}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-dev_access_secret_change_me}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev_refresh_secret_change_me}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:8080}
+    depends_on:
+      postgres: { condition: service_healthy }
+    ports: ["4001:4001"]
+
+  user-service:
+    build: { context: ., dockerfile: Dockerfile, args: { SERVICE: services/user-service } }
+    environment: *svc_env
+    depends_on:
+      postgres: { condition: service_healthy }
+    ports: ["4002:4002"]
+
+  extinguisher-service:
+    build: { context: ., dockerfile: Dockerfile, args: { SERVICE: services/extinguisher-service } }
+    environment: *svc_env
+    depends_on:
+      postgres: { condition: service_healthy }
+    ports: ["4003:4003"]
+
+  inspection-service:
+    build: { context: ., dockerfile: Dockerfile, args: { SERVICE: services/inspection-service } }
+    environment: *svc_env
+    depends_on:
+      postgres: { condition: service_healthy }
+    ports: ["4004:4004"]
+
+  notification-service:
+    build: { context: ., dockerfile: Dockerfile, args: { SERVICE: services/notification-service } }
+    environment: *svc_env
+    depends_on:
+      postgres: { condition: service_healthy }
+    ports: ["4005:4005"]
+
+  reporting-service:
+    build: { context: ., dockerfile: Dockerfile, args: { SERVICE: services/reporting-service } }
+    environment: *svc_env
+    depends_on:
+      postgres: { condition: service_healthy }
+    ports: ["4006:4006"]
+
+  gateway:
+    build: { context: ., dockerfile: Dockerfile, args: { SERVICE: gateway } }
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      GATEWAY_PORT: 8080
+      AUTH_SERVICE_URL: http://auth-service:4001
+      USER_SERVICE_URL: http://user-service:4002
+      EXTINGUISHER_SERVICE_URL: http://extinguisher-service:4003
+      INSPECTION_SERVICE_URL: http://inspection-service:4004
+      NOTIFICATION_SERVICE_URL: http://notification-service:4005
+      REPORTING_SERVICE_URL: http://reporting-service:4006
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:8080}
+    depends_on:
+      - auth-service
+      - user-service
+      - extinguisher-service
+      - inspection-service
+      - notification-service
+      - reporting-service
+    ports: ["8080:8080"]
+
+  frontend:
+    build: { context: ., dockerfile: frontend/Dockerfile }
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080/api/v1}
+    depends_on:
+      - gateway
+    ports: ["5173:80"]
+
+volumes:
+  fems_pgdata:

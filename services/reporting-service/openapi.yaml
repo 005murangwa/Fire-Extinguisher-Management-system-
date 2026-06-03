@@ -1,0 +1,77 @@
+openapi: 3.0.3
+info:
+  title: TZW FEMS - Reporting Service API
+  version: 1.0.0
+  description: >
+    Real-time inventory, inspection, compliance and maintenance reports plus a
+    single dashboard aggregate and CSV/PDF export. Also serves audit logs.
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Via API Gateway
+  - url: http://localhost:4006
+    description: Direct (development)
+tags:
+  - name: Reports
+  - name: Audit
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+security:
+  - bearerAuth: []
+paths:
+  /reports/dashboard:
+    get:
+      tags: [Reports]
+      summary: Aggregated dashboard data (KPIs + analytics + activity)
+      responses:
+        '200': { description: Dashboard payload }
+  /reports/inventory:
+    get:
+      tags: [Reports]
+      summary: Inventory report (totals + distributions)
+      responses:
+        '200': { description: Inventory report }
+  /reports/inspections:
+    get:
+      tags: [Reports]
+      summary: Inspection report (pending/completed/overdue + trend)
+      responses:
+        '200': { description: Inspection report }
+  /reports/compliance:
+    get:
+      tags: [Reports]
+      summary: Compliance report (expired, upcoming, compliance %)
+      responses:
+        '200': { description: Compliance report }
+  /reports/maintenance:
+    get:
+      tags: [Reports]
+      summary: Maintenance report (recent, frequency, monthly)
+      responses:
+        '200': { description: Maintenance report }
+  /reports/export:
+    get:
+      tags: [Reports]
+      summary: Export a report as CSV or PDF
+      parameters:
+        - { name: type, in: query, required: true, schema: { type: string, enum: [inventory, inspections, compliance, maintenance] } }
+        - { name: format, in: query, required: true, schema: { type: string, enum: [csv, pdf] } }
+      responses:
+        '200':
+          description: Binary file
+          content:
+            text/csv: {}
+            application/pdf: {}
+        '422': { description: Invalid type/format }
+  /audit-logs:
+    get:
+      tags: [Audit]
+      summary: List audit logs (ADMIN)
+      parameters:
+        - { name: page, in: query, schema: { type: integer } }
+        - { name: limit, in: query, schema: { type: integer } }
+        - { name: action, in: query, schema: { type: string } }
+        - { name: entity, in: query, schema: { type: string } }
+      responses:
+        '200': { description: Paginated audit logs }
+        '403': { description: Forbidden }

@@ -1,0 +1,134 @@
+openapi: 3.0.3
+info:
+  title: TZW FEMS - Fire Extinguisher Management Service API
+  version: 1.0.0
+  description: >
+    Register and manage fire extinguisher assets with search, filtering and
+    pagination. Enforces unique serial numbers and expiry-after-installation.
+servers:
+  - url: http://localhost:8080/api/v1/extinguishers
+    description: Via API Gateway
+  - url: http://localhost:4003
+    description: Direct (development)
+tags:
+  - name: Extinguishers
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  schemas:
+    Error:
+      type: object
+      properties:
+        success: { type: boolean, example: false }
+        error: { type: object, properties: { code: { type: string }, message: { type: string } } }
+    Extinguisher:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        serialNumber: { type: string, example: FE-1001 }
+        location: { type: string, example: HQ - Floor 1 Lobby }
+        type: { type: string, enum: [Water, CO2, Foam, Dry Chemical] }
+        size: { type: string, enum: [2.5 lbs, 5 lbs, 9 lbs, 12 lbs] }
+        installationDate: { type: string, format: date, example: 2023-01-15 }
+        expiryDate: { type: string, format: date, example: 2026-01-15 }
+        status: { type: string, enum: [Active, Expired, Maintenance, Decommissioned] }
+    ExtinguisherInput:
+      type: object
+      required: [serialNumber, location, type, size, installationDate, expiryDate]
+      properties:
+        serialNumber: { type: string, example: FE-2001 }
+        location: { type: string, example: Warehouse A - Bay 1 }
+        type: { type: string, enum: [Water, CO2, Foam, Dry Chemical] }
+        size: { type: string, enum: [2.5 lbs, 5 lbs, 9 lbs, 12 lbs] }
+        installationDate: { type: string, format: date }
+        expiryDate: { type: string, format: date }
+        status: { type: string, enum: [Active, Expired, Maintenance, Decommissioned] }
+security:
+  - bearerAuth: []
+paths:
+  /:
+    get:
+      tags: [Extinguishers]
+      summary: List / search extinguishers
+      description: Supports search and filtering by serial number, location, type and status, with pagination and sorting.
+      parameters:
+        - { name: page, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: search, in: query, schema: { type: string } }
+        - { name: serialNumber, in: query, schema: { type: string } }
+        - { name: location, in: query, schema: { type: string } }
+        - { name: type, in: query, schema: { type: string, enum: [Water, CO2, Foam, Dry Chemical] } }
+        - { name: status, in: query, schema: { type: string, enum: [Active, Expired, Maintenance, Decommissioned] } }
+      responses:
+        '200':
+          description: Paginated list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data: { type: array, items: { $ref: '#/components/schemas/Extinguisher' } }
+                  meta: { type: object }
+        '401': { description: Unauthorized }
+    post:
+      tags: [Extinguishers]
+      summary: Register an extinguisher (ADMIN/INSPECTOR)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExtinguisherInput' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { success: { type: boolean }, data: { $ref: '#/components/schemas/Extinguisher' } }
+        '409': { description: Duplicate serial number }
+        '422':
+          description: Validation error (e.g. expiry before installation)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Extinguishers]
+      summary: View extinguisher by id
+      responses:
+        '200': { description: Extinguisher }
+        '404': { description: Not found }
+    put:
+      tags: [Extinguishers]
+      summary: Full update (ADMIN/INSPECTOR)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExtinguisherInput' }
+      responses:
+        '200': { description: Updated }
+        '404': { description: Not found }
+        '409': { description: Duplicate serial number }
+    patch:
+      tags: [Extinguishers]
+      summary: Partial update (ADMIN/INSPECTOR)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExtinguisherInput' }
+      responses:
+        '200': { description: Updated }
+        '404': { description: Not found }
+    delete:
+      tags: [Extinguishers]
+      summary: Delete an extinguisher (ADMIN)
+      responses:
+        '204': { description: Deleted }
+        '403': { description: Forbidden }
+        '404': { description: Not found }

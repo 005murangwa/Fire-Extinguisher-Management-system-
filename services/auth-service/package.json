@@ -1,0 +1,17 @@
+{
+  "name": "@fems/auth-service",
+  "version": "1.0.0",
+  "description": "Authentication Service - registration, login, JWT issuance, profile and password management.",
+  "type": "module",
+  "private": true,
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon --watch src --watch ../../packages/shared/src src/server.js"
+  },
+  "dependencies": {
+    "@fems/shared": "1.0.0",
+    "uuid": "^11.0.3",
+    "zod": "^3.23.8"
+  }
+}

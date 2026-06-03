@@ -1,0 +1,140 @@
+openapi: 3.0.3
+info:
+  title: TZW FEMS - User Management Service API
+  version: 1.0.0
+  description: Admin CRUD for users and roles, protected by RBAC (ADMIN only).
+servers:
+  - url: http://localhost:8080/api/v1/users
+    description: Via API Gateway
+  - url: http://localhost:4002
+    description: Direct (development)
+tags:
+  - name: Users
+  - name: Roles
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  schemas:
+    Error:
+      type: object
+      properties:
+        success: { type: boolean, example: false }
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+    User:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        firstName: { type: string }
+        lastName: { type: string }
+        email: { type: string, format: email }
+        role: { type: string, enum: [ADMIN, INSPECTOR, USER] }
+        isActive: { type: boolean }
+        createdAt: { type: string, format: date-time }
+security:
+  - bearerAuth: []
+paths:
+  /roles:
+    get:
+      tags: [Roles]
+      summary: List roles
+      responses:
+        '200': { description: Role list }
+        '401': { description: Unauthorized }
+  /users:
+    get:
+      tags: [Users]
+      summary: List users (paginated, filterable)
+      parameters:
+        - { name: page, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: search, in: query, schema: { type: string } }
+        - { name: role, in: query, schema: { type: string, enum: [ADMIN, INSPECTOR, USER] } }
+      responses:
+        '200':
+          description: Paginated user list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data: { type: array, items: { $ref: '#/components/schemas/User' } }
+                  meta: { type: object }
+        '403': { description: Forbidden (requires ADMIN) }
+    post:
+      tags: [Users]
+      summary: Create a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [firstName, lastName, email, password]
+              properties:
+                firstName: { type: string }
+                lastName: { type: string }
+                email: { type: string, format: email }
+                password: { type: string, format: password }
+                role: { type: string, enum: [ADMIN, INSPECTOR, USER] }
+      responses:
+        '201': { description: Created }
+        '409': { description: Email already in use }
+        '422': { description: Validation error }
+  /users/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Users]
+      summary: Get user by id
+      responses:
+        '200': { description: User }
+        '404': { description: Not found }
+    put:
+      tags: [Users]
+      summary: Full update
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [firstName, lastName, email, role, isActive]
+              properties:
+                firstName: { type: string }
+                lastName: { type: string }
+                email: { type: string, format: email }
+                role: { type: string, enum: [ADMIN, INSPECTOR, USER] }
+                isActive: { type: boolean }
+      responses:
+        '200': { description: Updated }
+        '404': { description: Not found }
+    patch:
+      tags: [Users]
+      summary: Partial update
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                firstName: { type: string }
+                lastName: { type: string }
+                email: { type: string, format: email }
+                role: { type: string, enum: [ADMIN, INSPECTOR, USER] }
+                isActive: { type: boolean }
+      responses:
+        '200': { description: Updated }
+        '404': { description: Not found }
+    delete:
+      tags: [Users]
+      summary: Delete a user
+      responses:
+        '204': { description: Deleted }
+        '403': { description: Cannot delete own account }
+        '404': { description: Not found }

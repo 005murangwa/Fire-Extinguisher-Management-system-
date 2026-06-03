@@ -1,0 +1,17 @@
+{
+  "name": "@fems/reporting-service",
+  "version": "1.0.0",
+  "description": "Reporting Service - inventory, inspection, compliance and maintenance reports with PDF/CSV export.",
+  "type": "module",
+  "private": true,
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon --watch src --watch ../../packages/shared/src src/server.js"
+  },
+  "dependencies": {
+    "@fems/shared": "1.0.0",
+    "pdfkit": "^0.15.1",
+    "zod": "^3.23.8"
+  }
+}

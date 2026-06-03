@@ -1,0 +1,274 @@
+openapi: 3.0.3
+info:
+  title: TZW FEMS - Authentication Service API
+  version: 1.0.0
+  description: >
+    Handles user registration, login, JWT issuance/rotation, logout, profile
+    management and the password reset workflow for the Fire Extinguisher
+    Management System.
+  contact:
+    name: TZW LTD Engineering
+servers:
+  - url: http://localhost:8080/api/v1/auth
+    description: Via API Gateway
+  - url: http://localhost:4001
+    description: Direct (development)
+
+tags:
+  - name: Authentication
+    description: Registration, login, token lifecycle
+  - name: Profile
+    description: Authenticated account management
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Error:
+      type: object
+      properties:
+        success: { type: boolean, example: false }
+        error:
+          type: object
+          properties:
+            code: { type: string, example: VALIDATION_ERROR }
+            message: { type: string, example: Request validation failed }
+            details:
+              type: array
+              items:
+                type: object
+                properties:
+                  field: { type: string, example: body.email }
+                  message: { type: string, example: A valid email is required }
+    User:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        firstName: { type: string, example: Ada }
+        lastName: { type: string, example: Admin }
+        email: { type: string, format: email, example: admin@tzw.com }
+        role: { type: string, enum: [ADMIN, INSPECTOR, USER], example: ADMIN }
+        isActive: { type: boolean, example: true }
+        createdAt: { type: string, format: date-time }
+    AuthResult:
+      type: object
+      properties:
+        success: { type: boolean, example: true }
+        data:
+          type: object
+          properties:
+            user: { $ref: '#/components/schemas/User' }
+            accessToken: { type: string, example: eyJhbGciOiJIUzI1NiIsIn... }
+            refreshToken: { type: string, example: eyJhbGciOiJIUzI1NiIsIn... }
+            expiresIn: { type: integer, example: 900 }
+    RegisterRequest:
+      type: object
+      required: [firstName, lastName, email, password]
+      properties:
+        firstName: { type: string, example: Ada }
+        lastName: { type: string, example: Lovelace }
+        email: { type: string, format: email, example: ada@tzw.com }
+        password: { type: string, format: password, example: Str0ng!Pass }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email, example: admin@tzw.com }
+        password: { type: string, format: password, example: Password123! }
+
+paths:
+  /register:
+    post:
+      tags: [Authentication]
+      summary: Register a new account
+      description: >
+        Creates a new USER account. Validates all inputs, enforces a strong
+        password policy and prevents duplicate emails. Returns the new user
+        plus an access/refresh token pair.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+      responses:
+        '201':
+          description: Account created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResult' }
+        '409':
+          description: Email already registered
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                success: false
+                error: { code: CONFLICT, message: An account with this email already exists }
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /login:
+    post:
+      tags: [Authentication]
+      summary: Authenticate and obtain tokens
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResult' }
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                success: false
+                error: { code: UNAUTHORIZED, message: Invalid email or password }
+
+  /refresh:
+    post:
+      tags: [Authentication]
+      summary: Rotate tokens using a refresh token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken: { type: string }
+      responses:
+        '200':
+          description: New token pair
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResult' }
+        '401':
+          description: Invalid/expired refresh token
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /logout:
+    post:
+      tags: [Authentication]
+      summary: Revoke a refresh token (logout)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken: { type: string }
+      responses:
+        '204': { description: Logged out }
+
+  /forgot-password:
+    post:
+      tags: [Authentication]
+      summary: Request a password reset token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        '200': { description: Reset initiated (always succeeds to prevent enumeration) }
+
+  /reset-password:
+    post:
+      tags: [Authentication]
+      summary: Reset password using a token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, newPassword]
+              properties:
+                token: { type: string }
+                newPassword: { type: string, format: password }
+      responses:
+        '200': { description: Password reset }
+        '422':
+          description: Invalid/expired token or weak password
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /profile:
+    get:
+      tags: [Profile]
+      summary: View the authenticated user's profile
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data: { $ref: '#/components/schemas/User' }
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    patch:
+      tags: [Profile]
+      summary: Update profile fields
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                firstName: { type: string }
+                lastName: { type: string }
+                email: { type: string, format: email }
+      responses:
+        '200': { description: Updated profile }
+        '409': { description: Email already in use }
+
+  /change-password:
+    post:
+      tags: [Profile]
+      summary: Change the authenticated user's password
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword: { type: string, format: password }
+                newPassword: { type: string, format: password }
+      responses:
+        '200': { description: Password changed }
+        '422': { description: Current password incorrect or weak new password }
