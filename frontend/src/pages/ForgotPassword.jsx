@@ -10,6 +10,7 @@ import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { Flame, Loader2 } from 'lucide-react';
 import { api, apiErrorMessage } from '../lib/api.js';
+import { noAutofillPasswordProps, noAutofillTextProps } from '../lib/noAutofill.js';
 
 export default function ForgotPassword() {
   const [step, setStep] = useState('request');
@@ -69,10 +70,11 @@ export default function ForgotPassword() {
           <>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Forgot password</h2>
             <p className="mt-1 text-sm text-gray-500">Enter your email to receive a reset token.</p>
-            <form onSubmit={requestToken} className="mt-6 space-y-4">
+            <form onSubmit={requestToken} className="mt-6 space-y-4" autoComplete="off">
               <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@tzw.com"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
+                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                {...noAutofillTextProps('fems-forgot-email')} />
               <button disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60">
                 {busy && <Loader2 className="h-4 w-4 animate-spin" />} Send reset token
               </button>
@@ -84,11 +86,13 @@ export default function ForgotPassword() {
           <>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Reset password</h2>
             <p className="mt-1 text-sm text-gray-500">Paste your token and choose a new password.</p>
-            <form onSubmit={resetPassword} className="mt-6 space-y-4">
+            <form onSubmit={resetPassword} className="mt-6 space-y-4" autoComplete="off">
               <input value={token} onChange={(e) => setToken(e.target.value)} placeholder="Reset token"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
+                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                {...noAutofillTextProps('fems-reset-token')} />
               <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="New password"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
+                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                {...noAutofillPasswordProps('fems-reset-password')} />
               <button disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60">
                 {busy && <Loader2 className="h-4 w-4 animate-spin" />} Reset password
               </button>

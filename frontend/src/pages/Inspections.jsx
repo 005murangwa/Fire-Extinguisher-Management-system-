@@ -194,9 +194,13 @@ export default function Inspections() {
 
         title="Inspections"
 
-        subtitle="Schedule and track fire extinguisher inspections"
+        subtitle={hasRole('USER') ? 'Inspections for extinguishers assigned to you' : 'Schedule and track fire extinguisher inspections'}
 
-        actions={<Button icon={CalendarPlus} onClick={() => setShowForm((s) => !s)}>Schedule Inspection</Button>}
+        actions={
+          hasRole('ADMIN', 'INSPECTOR') ? (
+            <Button icon={CalendarPlus} onClick={() => setShowForm((s) => !s)}>Schedule Inspection</Button>
+          ) : null
+        }
 
       />
 

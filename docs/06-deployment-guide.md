@@ -58,25 +58,34 @@ See [`.env.example`](../.env.example). Critical production settings:
 - [ ] Schedule the notification generator (`POST /notifications/generate`) via cron.
 - [ ] Schedule `database/scripts/backup.sh` (e.g. nightly) and test restores.
 
-## 5. Health & readiness
+## 5. API documentation (Swagger)
+
+The gateway serves a **single Swagger UI** with every microservice spec in the
+explorer dropdown:
+
+- **URL:** `http://<gateway-host>:8080/docs` (local dev: `http://localhost:8080/docs`)
+- **Per-service OpenAPI:** proxied at `/docs/openapi/<service-name>.json` (no CORS issues)
+- From the Vite dev frontend (`:5173`), open **Settings → Open Swagger UI** (`/docs` is proxied to the gateway)
+
+## 6. Health & readiness
 
 Every service exposes `GET /health` returning `200` (DB reachable) or `503`
 (degraded). Use these as container liveness/readiness probes.
 
-## 6. Scaling
+## 7. Scaling
 
 Services are stateless; scale any of them horizontally (e.g. `docker compose up
 -d --scale reporting-service=3` behind the gateway, or replicas in Kubernetes).
 The database is the shared stateful component — scale it with read replicas and
 connection pooling as load grows.
 
-## 7. Zero-downtime updates
+## 8. Zero-downtime updates
 
 Because services are independent, deploy them one at a time. The gateway returns
 a friendly `502` for any briefly-unavailable upstream rather than failing the
 whole request surface.
 
-## 8. Backups & disaster recovery
+## 9. Backups & disaster recovery
 
 ```bash
 # Nightly logical backup (cron)

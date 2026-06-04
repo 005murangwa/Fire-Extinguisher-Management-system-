@@ -4,7 +4,7 @@
  * notification generation job. Demonstrates the light/dark preference storage.
  */
 import { Card, Title, Text, Button } from '@tremor/react';
-import { Sun, Moon, Bell, Loader2 } from 'lucide-react';
+import { Sun, Moon, Bell, Loader2, BookOpen } from 'lucide-react';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { PageHeader } from '../components/ui.jsx';
@@ -38,6 +38,19 @@ export default function Settings() {
             Switch to {theme === 'dark' ? 'Light' : 'Dark'} Mode
           </Button>
           <span className="text-sm text-gray-400">Current: {theme}</span>
+        </div>
+      </Card>
+
+      <Card className="mt-4">
+        <Title>API documentation</Title>
+        <Text>
+          Swagger UI lists every microservice (auth, users, extinguishers, inspections, requests, reports, and more).
+          Use the dropdown at the top of the docs page to switch between services.
+        </Text>
+        <div className="mt-4">
+          <a href="/docs" target="_blank" rel="noopener noreferrer">
+            <Button icon={BookOpen} variant="secondary">Open Swagger UI</Button>
+          </a>
         </div>
       </Card>
 

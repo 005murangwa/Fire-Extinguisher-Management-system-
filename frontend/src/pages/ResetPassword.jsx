@@ -7,6 +7,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api, apiErrorMessage, tokenStore } from '../lib/api.js';
+import { noAutofillPasswordProps, noAutofillTextProps } from '../lib/noAutofill.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
 export default function ResetPassword() {
@@ -48,13 +49,14 @@ export default function ResetPassword() {
         <p className="mt-1 text-sm text-gray-500">
           Set a new password using the link from your email.
         </p>
-        <form onSubmit={submit} className="mt-6 space-y-4">
+        <form onSubmit={submit} className="mt-6 space-y-4" autoComplete="off">
           {!tokenFromUrl && (
             <input
               value={token}
               onChange={(e) => setToken(e.target.value)}
               placeholder="Reset token"
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              {...noAutofillTextProps('fems-reset-token')}
             />
           )}
           <input
@@ -65,6 +67,7 @@ export default function ResetPassword() {
             onChange={(e) => setNewPassword(e.target.value)}
             placeholder="New password"
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+            {...noAutofillPasswordProps('fems-reset-new-password')}
           />
           <button
             type="submit"

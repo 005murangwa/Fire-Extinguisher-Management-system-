@@ -19,6 +19,7 @@ import { Flame, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 
 import { api, apiErrorMessage } from '../lib/api.js';
+import { noAutofillPasswordProps, noAutofillTextProps } from '../lib/noAutofill.js';
 
 
 
@@ -92,7 +93,7 @@ export default function Register() {
 
     try {
 
-      await api.post('/auth/send-registration-otp', {
+      const { data } = await api.post('/auth/send-registration-otp', {
 
         firstName: form.firstName,
 
@@ -104,7 +105,11 @@ export default function Register() {
 
       });
 
-      toast.success('Verification code sent to your email');
+      if (data.data?.otp) {
+        toast.success(`Dev OTP: ${data.data.otp} (SMTP not configured)`, { duration: 20000 });
+      } else {
+        toast.success('Verification code sent to your email');
+      }
 
       setStep('otp');
 
@@ -196,19 +201,19 @@ export default function Register() {
 
         {step === 'form' ? (
 
-          <form onSubmit={sendOtp} className="mt-6 space-y-4" noValidate>
+          <form onSubmit={sendOtp} className="mt-6 space-y-4" noValidate autoComplete="off">
 
             <div className="grid grid-cols-2 gap-4">
 
-              <Input label="First name" value={form.firstName} error={errors.firstName} onChange={(v) => setForm({ ...form, firstName: v })} />
+              <Input label="First name" noAutofill value={form.firstName} error={errors.firstName} onChange={(v) => setForm({ ...form, firstName: v })} />
 
-              <Input label="Last name" value={form.lastName} error={errors.lastName} onChange={(v) => setForm({ ...form, lastName: v })} />
+              <Input label="Last name" noAutofill value={form.lastName} error={errors.lastName} onChange={(v) => setForm({ ...form, lastName: v })} />
 
             </div>
 
-            <Input label="Email" type="email" value={form.email} error={errors.email} onChange={(v) => setForm({ ...form, email: v })} placeholder="you@company.com" />
+            <Input label="Email" noAutofill type="email" value={form.email} error={errors.email} onChange={(v) => setForm({ ...form, email: v })} placeholder="you@company.com" />
 
-            <Input label="Password" type="password" value={form.password} error={errors.password} onChange={(v) => setForm({ ...form, password: v })} placeholder="••••••••" />
+            <Input label="Password" noAutofill type="password" value={form.password} error={errors.password} onChange={(v) => setForm({ ...form, password: v })} placeholder="••••••••" />
 
             {form.password && pwIssues.length > 0 && (
 
@@ -230,9 +235,9 @@ export default function Register() {
 
         ) : (
 
-          <form onSubmit={verifyAndRegister} className="mt-6 space-y-4" noValidate>
+          <form onSubmit={verifyAndRegister} className="mt-6 space-y-4" noValidate autoComplete="off">
 
-            <Input label="Verification code" value={form.otp} error={errors.otp} onChange={(v) => setForm({ ...form, otp: v.replace(/\D/g, '').slice(0, 6) })} placeholder="123456" />
+            <Input label="Verification code" noAutofill value={form.otp} error={errors.otp} onChange={(v) => setForm({ ...form, otp: v.replace(/\D/g, '').slice(0, 6) })} placeholder="123456" />
 
             <button type="submit" disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60">
 
@@ -264,7 +269,11 @@ export default function Register() {
 
 
 
-function Input({ label, value, onChange, error, type = 'text', placeholder }) {
+function Input({ label, value, onChange, error, type = 'text', placeholder, noAutofill = false }) {
+
+  const autofillProps = noAutofill
+    ? (type === 'password' ? noAutofillPasswordProps(`fems-reg-${label}`) : noAutofillTextProps(`fems-reg-${label}`))
+    : {};
 
   return (
 
@@ -283,6 +292,8 @@ function Input({ label, value, onChange, error, type = 'text', placeholder }) {
         onChange={(e) => onChange(e.target.value)}
 
         className={`w-full rounded-lg border px-3 py-2.5 text-sm outline-none dark:bg-gray-800 dark:text-white ${error ? 'border-rose-400' : 'border-gray-300 dark:border-gray-700'}`}
+
+        {...autofillProps}
 
       />
 

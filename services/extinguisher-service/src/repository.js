@@ -71,6 +71,10 @@ export async function list({
   }
   if (availableOnly) {
     where.push(`assigned_to IS NULL AND status = 'Active'`);
+    where.push(`NOT EXISTS (
+      SELECT 1 FROM extinguisher_requests er
+       WHERE er.extinguisher_id = fire_extinguishers.id AND er.status = 'PENDING'
+    )`);
   }
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
 

@@ -75,8 +75,21 @@ export async function create(req, res) {
   if (ext.status !== 'Active') {
     throw new BadRequestError('Only active unassigned extinguishers can be requested');
   }
-  if (await repo.pendingForExtinguisher(extinguisherId, req.user.id)) {
-    throw new ConflictError('You already have a pending request for this extinguisher');
+  const duplicate = await repo.findPendingByUserAndExtinguisher(extinguisherId, req.user.id);
+  if (duplicate) {
+    const existing = await repo.findRequest(duplicate.id);
+    return ok(res, existing);
+  }
+
+  const userPending = await repo.findPendingForUser(req.user.id);
+  if (userPending) {
+    throw new ConflictError(
+      'You already have a pending request awaiting admin review. Check Notifications or try again after it is approved or denied.'
+    );
+  }
+
+  if (await repo.extinguisherHasPending(extinguisherId)) {
+    throw new ConflictError('This extinguisher already has a pending request from another user');
   }
 
   const item = await repo.createRequest({

@@ -66,11 +66,12 @@ export async function listInspections({
   if (inspectorId) { where.push(`i.inspector_id = $${i}`); params.push(inspectorId); i += 1; }
   if (assignedUserId) { where.push(`e.assigned_to = $${i}`); params.push(assignedUserId); i += 1; }
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const fromSql = `FROM inspections i JOIN fire_extinguishers e ON e.id = i.extinguisher_id`;
 
-  const countRes = await query(`SELECT COUNT(*)::int AS total FROM inspections i ${whereSql}`, params);
+  const countRes = await query(`SELECT COUNT(*)::int AS total ${fromSql} ${whereSql}`, params);
   const rowsRes = await query(
     `SELECT ${INSPECTION_COLUMNS}
-       FROM inspections i JOIN fire_extinguishers e ON e.id = i.extinguisher_id
+       ${fromSql}
        ${whereSql}
       ORDER BY i.${sortBy} ${sortDir} LIMIT $${i} OFFSET $${i + 1}`,
     [...params, limit, offset]

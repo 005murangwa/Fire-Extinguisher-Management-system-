@@ -41,11 +41,31 @@ export async function findRequest(id) {
   return rows[0] ?? null;
 }
 
-export async function pendingForExtinguisher(extinguisherId, requesterId) {
-  const { rowCount } = await query(
-    `SELECT 1 FROM extinguisher_requests
+export async function findPendingByUserAndExtinguisher(extinguisherId, requesterId) {
+  const { rows } = await query(
+    `SELECT id FROM extinguisher_requests
       WHERE extinguisher_id = $1 AND requester_id = $2 AND status = 'PENDING'`,
     [extinguisherId, requesterId]
+  );
+  return rows[0] ?? null;
+}
+
+export async function findPendingForUser(requesterId) {
+  const { rows } = await query(
+    `SELECT id, extinguisher_id AS "extinguisherId"
+       FROM extinguisher_requests
+      WHERE requester_id = $1 AND status = 'PENDING'
+      ORDER BY created_at DESC LIMIT 1`,
+    [requesterId]
+  );
+  return rows[0] ?? null;
+}
+
+export async function extinguisherHasPending(extinguisherId) {
+  const { rowCount } = await query(
+    `SELECT 1 FROM extinguisher_requests
+      WHERE extinguisher_id = $1 AND status = 'PENDING'`,
+    [extinguisherId]
   );
   return rowCount > 0;
 }

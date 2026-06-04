@@ -8,7 +8,7 @@
 
 import { useState } from 'react';
 
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation, Navigate } from 'react-router-dom';
 
 import { motion } from 'framer-motion';
 
@@ -20,13 +20,13 @@ import { useAuth } from '../context/AuthContext.jsx';
 
 import { apiErrorMessage } from '../lib/api.js';
 
-import { inputCls } from '../components/ui.jsx';
+import { noAutofillPasswordProps, noAutofillTextProps } from '../lib/noAutofill.js';
 
 
 
 export default function Login() {
 
-  const { login } = useAuth();
+  const { login, isAuthenticated, loading } = useAuth();
 
   const navigate = useNavigate();
 
@@ -38,7 +38,9 @@ export default function Login() {
 
   const [busy, setBusy] = useState(false);
 
-
+  if (!loading && isAuthenticated) {
+    return <Navigate to={location.state?.from?.pathname || '/dashboard'} replace />;
+  }
 
   const validate = () => {
 
@@ -164,7 +166,7 @@ export default function Login() {
 
 
 
-          <form onSubmit={submit} className="mt-6 space-y-4" noValidate>
+          <form onSubmit={submit} className="mt-6 space-y-4" noValidate autoComplete="off">
 
             <Field label="Email" error={errors.email} icon={Mail}>
 
@@ -179,6 +181,8 @@ export default function Login() {
                 className="w-full bg-transparent text-sm outline-none dark:text-white"
 
                 placeholder="you@company.com"
+
+                {...noAutofillTextProps('fems-login-email')}
 
               />
 
@@ -197,6 +201,8 @@ export default function Login() {
                 className="w-full bg-transparent text-sm outline-none dark:text-white"
 
                 placeholder="••••••••"
+
+                {...noAutofillPasswordProps('fems-login-password')}
 
               />
 

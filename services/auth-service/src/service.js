@@ -72,12 +72,18 @@ export async function sendRegistrationOtp(input) {
     email: input.email,
     password: input.password,
   });
-  await sendMail({
+  const mailResult = await sendMail({
     to: input.email,
     subject: 'TZW FEMS — Verify your email',
     text: `Your verification code is: ${otp}\n\nIt expires in 15 minutes.`,
   });
-  return { message: 'Verification code sent to your email' };
+
+  const result = { message: 'Verification code sent to your email' };
+  if (!config.isProd && mailResult?.dev) {
+    result.devNote = 'SMTP not configured — use the OTP below (also printed in the auth-service terminal)';
+    result.otp = otp;
+  }
+  return result;
 }
 
 /** Step 2: verify OTP and create the account. */

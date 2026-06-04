@@ -40,6 +40,7 @@ export function AuthProvider({ children }) {
           }
         }
         tokenStore.clear();
+        if (active) setUser(null);
       } finally {
         if (active) setLoading(false);
       }

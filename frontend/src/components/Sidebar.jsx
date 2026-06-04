@@ -5,10 +5,12 @@
  */
 import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useEffect, useState } from 'react';
 import {
   LayoutDashboard, Flame, CalendarCheck, Wrench, BarChart3, Users,
-  Bell, ScrollText, Settings, ShieldCheck, X,
+  Bell, ScrollText, Settings, ShieldCheck, X, ClipboardList,
 } from 'lucide-react';
+import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
 /** Navigation definition with role visibility. */
@@ -19,6 +21,7 @@ const NAV = [
   { to: '/maintenance', label: 'Maintenance', icon: Wrench },
   { to: '/reports', label: 'Reports', icon: BarChart3 },
   { to: '/notifications', label: 'Notifications', icon: Bell },
+  { to: '/requests', label: 'Requests', icon: ClipboardList, roles: ['ADMIN'] },
   { to: '/users', label: 'User Management', icon: Users, roles: ['ADMIN'] },
   { to: '/audit-logs', label: 'Audit Logs', icon: ScrollText, roles: ['ADMIN'] },
   { to: '/settings', label: 'Settings', icon: Settings },
@@ -26,7 +29,21 @@ const NAV = [
 
 export default function Sidebar({ open, onClose }) {
   const { user, hasRole } = useAuth();
+  const [pendingRequests, setPendingRequests] = useState(0);
   const items = NAV.filter((n) => !n.roles || hasRole(...n.roles));
+
+  useEffect(() => {
+    if (user?.role !== 'ADMIN') return undefined;
+    let cancelled = false;
+    const load = () => {
+      api.get('/requests/pending-count')
+        .then((r) => { if (!cancelled) setPendingRequests(r.data.data?.count ?? 0); })
+        .catch(() => {});
+    };
+    load();
+    const t = setInterval(load, 60_000);
+    return () => { cancelled = true; clearInterval(t); };
+  }, [user?.role]);
 
   return (
     <>
@@ -71,6 +88,11 @@ export default function Sidebar({ open, onClose }) {
                 <>
                   <item.icon className="h-5 w-5" />
                   <span>{item.label}</span>
+                  {item.to === '/requests' && pendingRequests > 0 && (
+                    <span className="ml-auto rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white">
+                      {pendingRequests > 99 ? '99+' : pendingRequests}
+                    </span>
+                  )}
                   {isActive && (
                     <motion.span layoutId="nav-indicator" className="ml-auto h-2 w-2 rounded-full bg-blue-500" />
                   )}

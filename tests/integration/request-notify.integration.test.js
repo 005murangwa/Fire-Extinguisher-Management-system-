@@ -20,7 +20,31 @@ let reqSvc;
 let notify;
 let userToken;
 let adminToken;
-let availableExtinguisherId;
+async function clearUserPendingRequests(userToken, adminToken) {
+  const profile = await request(`${auth.baseUrl}/api/v1/auth/profile`, { token: userToken });
+  const userId = profile.body?.data?.id;
+  if (!userId) return;
+
+  const pending = await request(`${reqSvc.baseUrl}/api/v1/requests`, {
+    token: adminToken,
+    query: { status: 'PENDING', requesterId: userId, limit: 50 },
+  });
+  for (const r of pending.body?.data ?? []) {
+    await request(`${reqSvc.baseUrl}/api/v1/requests/${r.id}/deny`, {
+      method: 'PUT',
+      token: adminToken,
+      body: { denialReason: 'test cleanup' },
+    });
+  }
+}
+
+async function pickAvailableExtinguisher(token) {
+  const available = await request(`${ext.baseUrl}/api/v1/extinguishers/available`, {
+    token,
+    query: { limit: 100 },
+  });
+  return available.body?.data?.[0]?.id;
+}
 
 async function loginAs(email) {
   const res = await request(`${auth.baseUrl}/api/v1/auth/login`, {
@@ -38,11 +62,7 @@ before(async () => {
   notify = await listen('notify-req-test', notifyRoutes, '/api/v1');
   userToken = await loginAs('user@tzw.com');
   adminToken = await loginAs('brillanteigabemurangwa@gmail.com');
-
-  const available = await request(`${ext.baseUrl}/api/v1/extinguishers/available`, {
-    token: userToken,
-  });
-  availableExtinguisherId = available.body?.data?.[0]?.id;
+  await clearUserPendingRequests(userToken, adminToken);
 });
 
 after(async () => {
@@ -54,13 +74,14 @@ after(async () => {
 });
 
 maybe('submitting a request creates REQUEST_SUBMITTED for admin', async () => {
-  assert.ok(availableExtinguisherId, 'need an unassigned extinguisher');
+  const extinguisherId = await pickAvailableExtinguisher(userToken);
+  assert.ok(extinguisherId, 'need an unassigned extinguisher');
 
   const create = await request(`${reqSvc.baseUrl}/api/v1/requests`, {
     method: 'POST',
     token: userToken,
     body: {
-      extinguisherId: availableExtinguisherId,
+      extinguisherId,
       reason: 'Needed for lab safety compliance',
       locationDetails: 'Building B',
     },
@@ -76,4 +97,31 @@ maybe('submitting a request creates REQUEST_SUBMITTED for admin', async () => {
   );
   assert.ok(match, 'admin should see REQUEST_SUBMITTED in notification centre');
   assert.match(match.message, /lab safety/i);
+});
+
+maybe('duplicate submit for same extinguisher returns existing pending (no false conflict)', async () => {
+  await clearUserPendingRequests(userToken, adminToken);
+  const extinguisherId = await pickAvailableExtinguisher(userToken);
+  assert.ok(extinguisherId, 'need an unassigned extinguisher');
+
+  const body = {
+    extinguisherId,
+    reason: 'Duplicate click safety test reason',
+    locationDetails: 'Lab',
+  };
+
+  const first = await request(`${reqSvc.baseUrl}/api/v1/requests`, {
+    method: 'POST',
+    token: userToken,
+    body,
+  });
+  assert.equal(first.status, 201, `first status ${first.status}`);
+
+  const second = await request(`${reqSvc.baseUrl}/api/v1/requests`, {
+    method: 'POST',
+    token: userToken,
+    body,
+  });
+  assert.equal(second.status, 200);
+  assert.equal(second.body.data.id, first.body.data.id);
 });

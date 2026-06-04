@@ -54,13 +54,43 @@ const routes = [
 // Health endpoint for the gateway itself.
 app.get('/health', (_req, res) => res.json({ success: true, data: { service: 'gateway', status: 'healthy' } }));
 
-// Aggregated documentation index pointing at each service's Swagger UI.
+// Unique upstream services for aggregated Swagger (same-origin specs avoid CORS).
+const docServices = routes.filter(
+  (r, idx, arr) => arr.findIndex((x) => x.name === r.name) === idx
+);
+
+/** Proxy each service OpenAPI spec through the gateway (browser stays on :8080). */
+for (const svc of docServices) {
+  const specPath = `/docs/openapi/${svc.name}.json`;
+  app.get(specPath, async (_req, res) => {
+    try {
+      const upstream = await fetch(`${svc.target}/openapi.json`);
+      if (!upstream.ok) {
+        return res.status(502).json({
+          success: false,
+          error: { code: 'BAD_GATEWAY', message: `Could not load spec from ${svc.name}` },
+        });
+      }
+      const spec = await upstream.json();
+      return res.json(spec);
+    } catch (err) {
+      logger.error({ err, service: svc.name }, 'OpenAPI proxy failed');
+      return res.status(502).json({
+        success: false,
+        error: { code: 'BAD_GATEWAY', message: `${svc.name} is unavailable` },
+      });
+    }
+  });
+}
+
 const docsIndex = {
   service: 'TZW FEMS API Gateway',
   version: '1.0.0',
-  services: routes
-    .filter((r, idx, arr) => arr.findIndex((x) => x.name === r.name) === idx)
-    .map((r) => ({ name: r.name, docs: `${r.target}/docs`, openapi: `${r.target}/openapi.json` })),
+  services: docServices.map((s) => ({
+    name: s.name,
+    docs: `${s.target}/docs`,
+    openapi: `/docs/openapi/${s.name}.json`,
+  })),
 };
 app.get('/docs.json', (_req, res) => res.json(docsIndex));
 app.use(
@@ -69,7 +99,10 @@ app.use(
   swaggerUi.setup(null, {
     explorer: true,
     swaggerOptions: {
-      urls: docsIndex.services.map((s) => ({ url: s.openapi, name: s.name })),
+      urls: docServices.map((s) => ({
+        url: `/docs/openapi/${s.name}.json`,
+        name: s.name,
+      })),
     },
     customSiteTitle: 'TZW FEMS API',
   })

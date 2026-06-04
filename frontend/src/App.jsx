@@ -6,6 +6,7 @@
  */
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
+import RootRedirect from './components/RootRedirect.jsx';
 import Layout from './components/Layout.jsx';
 
 import Login from './pages/Login.jsx';
@@ -24,6 +25,7 @@ import Users from './pages/Users.jsx';
 import Profile from './pages/Profile.jsx';
 import Notifications from './pages/Notifications.jsx';
 import AuditLogs from './pages/AuditLogs.jsx';
+import Requests from './pages/Requests.jsx';
 import Settings from './pages/Settings.jsx';
 
 export default function App() {
@@ -50,6 +52,10 @@ export default function App() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/settings" element={<Settings />} />
         <Route
+          path="/requests"
+          element={<ProtectedRoute roles={['ADMIN']}><Requests /></ProtectedRoute>}
+        />
+        <Route
           path="/users"
           element={<ProtectedRoute roles={['ADMIN']}><Users /></ProtectedRoute>}
         />
@@ -59,8 +65,8 @@ export default function App() {
         />
       </Route>
 
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/" element={<RootRedirect />} />
+      <Route path="*" element={<RootRedirect />} />
     </Routes>
   );
 }

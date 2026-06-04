@@ -25,6 +25,8 @@ export default function Extinguishers() {
   const [showRequest, setShowRequest] = useState(false);
   const [available, setAvailable] = useState([]);
   const [reqForm, setReqForm] = useState({ extinguisherId: '', reason: '' });
+  const [reqSubmitting, setReqSubmitting] = useState(false);
+  const [myRequests, setMyRequests] = useState([]);
   const navigate = useNavigate();
   const { hasRole } = useAuth();
 
@@ -44,21 +46,45 @@ export default function Extinguishers() {
 
   useEffect(() => { load(); }, [load]);
 
+  const loadMyRequests = useCallback(() => {
+    if (!hasRole('USER')) return;
+    api.get('/requests/my-requests', { params: { limit: 20 } })
+      .then((r) => setMyRequests(r.data.data ?? []))
+      .catch(() => {});
+  }, [hasRole]);
+
+  useEffect(() => { loadMyRequests(); }, [loadMyRequests]);
+
   useEffect(() => {
     if (!showRequest) return;
     api.get('/extinguishers/available', { params: { limit: 100 } })
       .then((r) => setAvailable(r.data.data))
-      .catch(() => {});
+      .catch(() => setAvailable([]));
   }, [showRequest]);
 
   const submitRequest = async (ev) => {
     ev.preventDefault();
+    if (reqSubmitting) return;
+    if (!reqForm.extinguisherId) {
+      toast.error('Select an available extinguisher');
+      return;
+    }
+    if (reqForm.reason.trim().length < 10) {
+      toast.error('Reason must be at least 10 characters');
+      return;
+    }
+    setReqSubmitting(true);
     try {
-      await api.post('/requests', reqForm);
-      toast.success('Request submitted');
+      await api.post('/requests', {
+        extinguisherId: reqForm.extinguisherId,
+        reason: reqForm.reason.trim(),
+      });
+      toast.success('Request submitted — an admin will review it');
       setShowRequest(false);
       setReqForm({ extinguisherId: '', reason: '' });
+      loadMyRequests();
     } catch (err) { toast.error(apiErrorMessage(err)); }
+    finally { setReqSubmitting(false); }
   };
 
   const remove = async () => {
@@ -111,6 +137,14 @@ export default function Extinguishers() {
         }
       />
 
+      {hasRole('USER') && myRequests.some((r) => r.status === 'PENDING') && (
+        <Card className="mb-4 border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20">
+          <p className="text-sm text-amber-900 dark:text-amber-100">
+            You have a pending extinguisher request awaiting admin approval. You will be notified when it is approved or denied.
+          </p>
+        </Card>
+      )}
+
       <Card className="overflow-visible">
         <FilterToolbar>
           <FormSelect label="Type" value={type} onChange={setType} options={TYPE_OPTIONS} placeholder="All types" allowEmpty className="w-full sm:w-44" />
@@ -143,7 +177,9 @@ export default function Extinguishers() {
               </div>
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="secondary" onClick={() => setShowRequest(false)}>Cancel</Button>
-                <Button type="submit">Submit request</Button>
+                <Button type="submit" disabled={reqSubmitting}>
+                  {reqSubmitting ? 'Submitting…' : 'Submit request'}
+                </Button>
               </div>
             </form>
           </div>
